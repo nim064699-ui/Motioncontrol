@@ -23,11 +23,14 @@ export default function Page() {
   const [videoFile, setVideoFile] = useState(null)
 
   const [imagePreview, setImagePreview] = useState('')
+  const [videoPreview, setVideoPreview] = useState('')
+
   const [prompt, setPrompt] = useState('')
 
   const [cfgScale, setCfgScale] = useState(0.5)
 
   const [loading, setLoading] = useState(false)
+
   const [status, setStatus] = useState('')
 
   const [resultVideo, setResultVideo] = useState('')
@@ -53,12 +56,19 @@ export default function Page() {
 
     setHistory(updated)
 
-    localStorage.setItem('history', JSON.stringify(updated))
+    localStorage.setItem(
+      'history',
+      JSON.stringify(updated)
+    )
   }
 
   const handleLogin = () => {
-    if (username === USERNAME && password === PASSWORD) {
+    if (
+      username === USERNAME &&
+      password === PASSWORD
+    ) {
       localStorage.setItem('login', 'true')
+
       setLoggedIn(true)
     } else {
       alert('Username atau password salah')
@@ -67,10 +77,11 @@ export default function Page() {
 
   const logout = () => {
     localStorage.removeItem('login')
+
     setLoggedIn(false)
   }
 
-  const uploadToCatbox = async (file) => {
+  const uploadFile = async (file) => {
     const formData = new FormData()
 
     formData.append('file', file)
@@ -81,6 +92,10 @@ export default function Page() {
     })
 
     const data = await res.json()
+
+    if (data.error) {
+      throw new Error(data.error)
+    }
 
     return data.url
   }
@@ -98,26 +113,37 @@ export default function Page() {
       }
 
       setLoading(true)
+
       setStatus('Uploading image...')
 
-      const imageUrl = await uploadToCatbox(imageFile)
+      const imageUrl = await uploadFile(
+        imageFile
+      )
 
       setStatus('Uploading video...')
 
-      const videoUrl = await uploadToCatbox(videoFile)
+      const videoUrl = await uploadFile(
+        videoFile
+      )
 
       setStatus('Generating video...')
 
       const res = await fetch(API_URL, {
         method: 'POST',
+
         headers: {
           'Content-Type': 'application/json',
+
           Authorization: `Bearer ${apiKey}`
         },
+
         body: JSON.stringify({
           image_url: imageUrl,
+
           video_url: videoUrl,
+
           prompt,
+
           cfg_scale: Number(cfgScale)
         })
       })
@@ -136,13 +162,18 @@ export default function Page() {
       while (!finalVideo) {
         setStatus('Waiting result...')
 
-        await new Promise((r) => setTimeout(r, 5000))
+        await new Promise((r) =>
+          setTimeout(r, 5000)
+        )
 
-        const check = await fetch(`${STATUS_URL}/${taskId}`, {
-          headers: {
-            Authorization: `Bearer ${apiKey}`
+        const check = await fetch(
+          `${STATUS_URL}/${taskId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`
+            }
           }
-        })
+        )
 
         const result = await check.json()
 
@@ -165,38 +196,23 @@ export default function Page() {
       alert(err.message)
     } finally {
       setLoading(false)
+
       setStatus('')
     }
   }
 
   if (!loggedIn) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          background: '#060b16',
-          color: 'white',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: 20
-        }}
-      >
-        <div
-          style={{
-            width: '100%',
-            maxWidth: 400,
-            background: '#111827',
-            padding: 25,
-            borderRadius: 20
-          }}
-        >
-          <h1>Kling Motion Login</h1>
+      <div style={loginWrap}>
+        <div style={loginBox}>
+          <h1>MOTION CONTROL SA AYANA</h1>
 
           <input
             placeholder='Username'
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) =>
+              setUsername(e.target.value)
+            }
             style={inputStyle}
           />
 
@@ -204,7 +220,9 @@ export default function Page() {
             type='password'
             placeholder='Password'
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) =>
+              setPassword(e.target.value)
+            }
             style={inputStyle}
           />
 
@@ -212,7 +230,7 @@ export default function Page() {
             onClick={handleLogin}
             style={buttonStyle}
           >
-            Login
+            LOGIN
           </button>
         </div>
       </div>
@@ -220,35 +238,11 @@ export default function Page() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#060b16',
-        color: 'white',
-        padding: 20
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 700,
-          margin: '0 auto'
-        }}
-      >
-        <div
-          style={{
-            background: '#111827',
-            borderRadius: 20,
-            padding: 20,
-            marginBottom: 20
-          }}
-        >
-          <h1
-            style={{
-              fontSize: 40,
-              marginBottom: 10
-            }}
-          >
-            Kling 2.6 Motion Control
+    <div style={mainStyle}>
+      <div style={container}>
+        <div style={card}>
+          <h1 style={title}>
+            MOTION CONTROL SA AYANA
           </h1>
 
           <button
@@ -257,102 +251,109 @@ export default function Page() {
           >
             Logout
           </button>
-        </div>
 
-        <div
-          style={{
-            background: '#111827',
-            borderRadius: 20,
-            padding: 20
-          }}
-        >
           <input
             placeholder='Magnific API Key'
             value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e) =>
+              setApiKey(e.target.value)
+            }
             style={inputStyle}
           />
 
-          <div style={{ marginTop: 20 }}>
-            <p>Upload Image</p>
+          <div style={previewWrap}>
+            <div style={previewBox}>
+              <p>Reference Image</p>
 
-            <input
-              type='file'
-              accept='image/*'
-              onChange={(e) => {
-                const file = e.target.files[0]
+              <input
+                type='file'
+                accept='image/*'
+                onChange={(e) => {
+                  const file =
+                    e.target.files[0]
 
-                setImageFile(file)
+                  setImageFile(file)
 
-                setImagePreview(URL.createObjectURL(file))
-              }}
-            />
-          </div>
+                  setImagePreview(
+                    URL.createObjectURL(file)
+                  )
+                }}
+              />
 
-          {imagePreview && (
-            <img
-              src={imagePreview}
-              style={{
-                width: '100%',
-                borderRadius: 20,
-                marginTop: 20
-              }}
-            />
-          )}
+              {imagePreview && (
+                <img
+                  src={imagePreview}
+                  style={previewImage}
+                />
+              )}
+            </div>
 
-          <div style={{ marginTop: 20 }}>
-            <p>Upload Motion Video</p>
+            <div style={previewBox}>
+              <p>Reference Motion</p>
 
-            <input
-              type='file'
-              accept='video/*'
-              onChange={(e) => {
-                const file = e.target.files[0]
+              <input
+                type='file'
+                accept='video/*'
+                onChange={(e) => {
+                  const file =
+                    e.target.files[0]
 
-                setVideoFile(file)
-              }}
-            />
+                  setVideoFile(file)
+
+                  setVideoPreview(
+                    URL.createObjectURL(file)
+                  )
+                }}
+              />
+
+              {videoPreview && (
+                <video
+                  src={videoPreview}
+                  controls
+                  style={previewImage}
+                />
+              )}
+            </div>
           </div>
 
           <textarea
             placeholder='Prompt Motion'
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={(e) =>
+              setPrompt(e.target.value)
+            }
             style={textareaStyle}
           />
 
-          <div style={{ marginTop: 20 }}>
-            <h3>CFG Scale: {cfgScale}</h3>
+          <h3>
+            CFG Scale: {cfgScale}
+          </h3>
 
-            <input
-              type='range'
-              min='0'
-              max='1'
-              step='0.1'
-              value={cfgScale}
-              onChange={(e) => setCfgScale(e.target.value)}
-              style={{ width: '100%' }}
-            />
-          </div>
+          <input
+            type='range'
+            min='0'
+            max='1'
+            step='0.1'
+            value={cfgScale}
+            onChange={(e) =>
+              setCfgScale(e.target.value)
+            }
+            style={{ width: '100%' }}
+          />
 
           <button
             onClick={generateVideo}
             disabled={loading}
             style={buttonStyle}
           >
-            {loading ? status : 'Generate Video'}
+            {loading
+              ? status
+              : 'Generate Video'}
           </button>
         </div>
 
         {resultVideo && (
-          <div
-            style={{
-              background: '#111827',
-              borderRadius: 20,
-              padding: 20,
-              marginTop: 20
-            }}
-          >
+          <div style={card}>
             <h2>Result Video</h2>
 
             <video
@@ -366,14 +367,7 @@ export default function Page() {
           </div>
         )}
 
-        <div
-          style={{
-            background: '#111827',
-            borderRadius: 20,
-            padding: 20,
-            marginTop: 20
-          }}
-        >
+        <div style={card}>
           <h1>History Generate</h1>
 
           {history.map((item, index) => (
@@ -401,13 +395,55 @@ export default function Page() {
   )
 }
 
+const loginWrap = {
+  minHeight: '100vh',
+  background: '#020617',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 20
+}
+
+const loginBox = {
+  width: '100%',
+  maxWidth: 400,
+  background: '#0f172a',
+  padding: 25,
+  borderRadius: 25,
+  color: 'white'
+}
+
+const mainStyle = {
+  minHeight: '100vh',
+  background: '#020617',
+  padding: 20,
+  color: 'white'
+}
+
+const container = {
+  maxWidth: 900,
+  margin: '0 auto'
+}
+
+const card = {
+  background: '#0f172a',
+  padding: 20,
+  borderRadius: 25,
+  marginBottom: 20
+}
+
+const title = {
+  fontSize: 38,
+  marginBottom: 10
+}
+
 const inputStyle = {
   width: '100%',
   padding: 15,
-  marginTop: 10,
-  background: '#1f2937',
-  border: '1px solid #374151',
-  borderRadius: 12,
+  marginTop: 15,
+  borderRadius: 15,
+  border: '1px solid #334155',
+  background: '#1e293b',
   color: 'white'
 }
 
@@ -415,11 +451,11 @@ const textareaStyle = {
   width: '100%',
   height: 120,
   marginTop: 20,
-  padding: 15,
-  background: '#1f2937',
-  border: '1px solid #374151',
-  borderRadius: 12,
-  color: 'white'
+  borderRadius: 15,
+  border: '1px solid #334155',
+  background: '#1e293b',
+  color: 'white',
+  padding: 15
 }
 
 const buttonStyle = {
@@ -427,7 +463,7 @@ const buttonStyle = {
   padding: 15,
   marginTop: 20,
   border: 'none',
-  borderRadius: 12,
+  borderRadius: 15,
   background: '#2563eb',
   color: 'white',
   fontWeight: 'bold',
@@ -436,9 +472,27 @@ const buttonStyle = {
 
 const logoutStyle = {
   padding: '10px 20px',
+  borderRadius: 15,
   border: 'none',
-  borderRadius: 12,
   background: '#dc2626',
   color: 'white',
-  cursor: 'pointer'
-      }
+  marginBottom: 20
+}
+
+const previewWrap = {
+  display: 'flex',
+  gap: 15,
+  marginTop: 20
+}
+
+const previewBox = {
+  flex: 1
+}
+
+const previewImage = {
+  width: '100%',
+  height: 250,
+  objectFit: 'cover',
+  borderRadius: 20,
+  marginTop: 10
+              }
