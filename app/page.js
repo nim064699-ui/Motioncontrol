@@ -25,7 +25,7 @@ export default function Page() {
 
   const [loading, setLoading] = useState(false)
   const [resultVideo, setResultVideo] = useState('')
-  const [history, setHistory] = useState<any[]>([])
+  const [history, setHistory] = useState([])
 
   useEffect(() => {
     const savedLogin = localStorage.getItem('loggedIn')
@@ -120,7 +120,7 @@ export default function Page() {
           })
         }
       }, 5000)
-    } catch (err: any) {
+    } catch (err) {
       setLoading(false)
       alert(err.message)
     }
