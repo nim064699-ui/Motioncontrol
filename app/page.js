@@ -54,7 +54,7 @@ export default function Page() {
     setLoggedIn(false)
   }
 
-  const saveHistory = (item: any) => {
+  const saveHistory = (item) => {
     const updated = [item, ...history]
     setHistory(updated)
     localStorage.setItem('history', JSON.stringify(updated))
