@@ -18,31 +18,47 @@ export default function Page() {
   const [password, setPassword] = useState('')
 
   const [apiKey, setApiKey] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
-  const [videoUrl, setVideoUrl] = useState('')
+
+  const [imageFile, setImageFile] = useState(null)
+  const [videoFile, setVideoFile] = useState(null)
+
+  const [imagePreview, setImagePreview] = useState('')
   const [prompt, setPrompt] = useState('')
+
   const [cfgScale, setCfgScale] = useState(0.5)
 
   const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState('')
+
   const [resultVideo, setResultVideo] = useState('')
+
   const [history, setHistory] = useState([])
 
   useEffect(() => {
-    const savedLogin = localStorage.getItem('loggedIn')
-    const savedHistory = localStorage.getItem('history')
+    const login = localStorage.getItem('login')
 
-    if (savedLogin === 'true') {
+    if (login === 'true') {
       setLoggedIn(true)
     }
+
+    const savedHistory = localStorage.getItem('history')
 
     if (savedHistory) {
       setHistory(JSON.parse(savedHistory))
     }
   }, [])
 
-  const login = () => {
+  const saveHistory = (item) => {
+    const updated = [item, ...history]
+
+    setHistory(updated)
+
+    localStorage.setItem('history', JSON.stringify(updated))
+  }
+
+  const handleLogin = () => {
     if (username === USERNAME && password === PASSWORD) {
-      localStorage.setItem('loggedIn', 'true')
+      localStorage.setItem('login', 'true')
       setLoggedIn(true)
     } else {
       alert('Username atau password salah')
@@ -50,225 +66,247 @@ export default function Page() {
   }
 
   const logout = () => {
-    localStorage.removeItem('loggedIn')
+    localStorage.removeItem('login')
     setLoggedIn(false)
   }
 
-  const saveHistory = (item) => {
-    const updated = [item, ...history]
-    setHistory(updated)
-    localStorage.setItem('history', JSON.stringify(updated))
+  const uploadToCatbox = async (file) => {
+    const formData = new FormData()
+
+    formData.append('reqtype', 'fileupload')
+    formData.append('fileToUpload', file)
+
+    const res = await fetch('https://catbox.moe/user/api.php', {
+      method: 'POST',
+      body: formData
+    })
+
+    return await res.text()
   }
 
   const generateVideo = async () => {
     try {
       setLoading(true)
-      setResultVideo('')
+      setStatus('Uploading image...')
+
+      const imageUrl = await uploadToCatbox(imageFile)
+
+      setStatus('Uploading video...')
+
+      const videoUrl = await uploadToCatbox(videoFile)
+
+      setStatus('Generating video...')
 
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-magnific-api-key': apiKey
+          Authorization: `Bearer ${apiKey}`
         },
         body: JSON.stringify({
           image_url: imageUrl,
           video_url: videoUrl,
           prompt,
-          character_orientation: 'video',
-          cfg_scale: Number(cfgScale)
+          cfg_scale: cfgScale
         })
       })
 
       const data = await res.json()
 
-      if (!data.task_id) {
+      const taskId = data.task_id
+
+      if (!taskId) {
         alert(JSON.stringify(data))
-        setLoading(false)
         return
       }
 
-      const taskId = data.task_id
+      let finalVideo = ''
 
-      const interval = setInterval(async () => {
+      while (!finalVideo) {
+        setStatus('Waiting result...')
+
+        await new Promise((r) => setTimeout(r, 5000))
+
         const check = await fetch(`${STATUS_URL}/${taskId}`, {
           headers: {
-            'x-magnific-api-key': apiKey
+            Authorization: `Bearer ${apiKey}`
           }
         })
 
         const result = await check.json()
 
-        const video =
+        finalVideo =
           result.video_url ||
           result.output_url ||
-          result.result_url
+          result.result_url ||
+          ''
 
-        if (video) {
-          clearInterval(interval)
-
-          setResultVideo(video)
-
-          setLoading(false)
+        if (finalVideo) {
+          setResultVideo(finalVideo)
 
           saveHistory({
-            prompt,
-            imageUrl,
-            videoUrl,
-            resultVideo: video,
-            createdAt: new Date().toLocaleString()
+            video: finalVideo,
+            prompt
           })
         }
-      }, 5000)
+      }
     } catch (err) {
-      setLoading(false)
       alert(err.message)
+    } finally {
+      setLoading(false)
+      setStatus('')
     }
   }
 
   if (!loggedIn) {
     return (
-      <main className="min-h-screen bg-black text-white flex items-center justify-center p-6">
-        <div className="w-full max-w-sm bg-zinc-900 rounded-2xl p-6 space-y-4">
-          <h1 className="text-2xl font-bold text-center text-yellow-400">
-            Kling Motion Login
-          </h1>
+      <div style={{ padding: 20 }}>
+        <h1>Login Kling Motion</h1>
 
-          <input
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full p-3 rounded-xl bg-zinc-800"
-          />
+        <input
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 rounded-xl bg-zinc-800"
-          />
+        <br />
+        <br />
 
-          <button
-            onClick={login}
-            className="w-full p-3 rounded-xl bg-yellow-400 text-black font-bold"
-          >
-            Login
-          </button>
-        </div>
-      </main>
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <br />
+        <br />
+
+        <button onClick={handleLogin}>Login</button>
+      </div>
     )
   }
 
   return (
-    <main className="min-h-screen bg-black text-white p-6">
-      <div className="max-w-2xl mx-auto space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-yellow-400">
-            Kling 2.6 Motion Control
-          </h1>
+    <div style={{ padding: 20 }}>
+      <h1>Kling 2.6 Motion Control</h1>
 
-          <button
-            onClick={logout}
-            className="bg-red-500 px-4 py-2 rounded-xl"
-          >
-            Logout
-          </button>
-        </div>
+      <button onClick={logout}>Logout</button>
 
-        <input
-          placeholder="Magnific API Key"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          className="w-full p-3 rounded-xl bg-zinc-900"
+      <br />
+      <br />
+
+      <input
+        placeholder="Magnific API Key"
+        value={apiKey}
+        onChange={(e) => setApiKey(e.target.value)}
+        style={{ width: '100%' }}
+      />
+
+      <br />
+      <br />
+
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => {
+          const file = e.target.files[0]
+
+          setImageFile(file)
+
+          setImagePreview(URL.createObjectURL(file))
+        }}
+      />
+
+      <br />
+      <br />
+
+      {imagePreview && (
+        <img
+          src={imagePreview}
+          width="200"
         />
+      )}
 
-        <input
-          placeholder="Image URL"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          className="w-full p-3 rounded-xl bg-zinc-900"
+      <br />
+      <br />
+
+      <input
+        type="file"
+        accept="video/*"
+        onChange={(e) => {
+          const file = e.target.files[0]
+
+          setVideoFile(file)
+        }}
+      />
+
+      <br />
+      <br />
+
+      <textarea
+        placeholder="Prompt"
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        style={{
+          width: '100%',
+          height: 100
+        }}
+      />
+
+      <br />
+      <br />
+
+      <h3>CFG Scale: {cfgScale}</h3>
+
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.1"
+        value={cfgScale}
+        onChange={(e) => setCfgScale(e.target.value)}
+      />
+
+      <br />
+      <br />
+
+      <button
+        onClick={generateVideo}
+        disabled={loading}
+      >
+        {loading ? status : 'Generate Video'}
+      </button>
+
+      <br />
+      <br />
+
+      {resultVideo && (
+        <video
+          src={resultVideo}
+          controls
+          width="100%"
         />
+      )}
 
-        <input
-          placeholder="Video URL"
-          value={videoUrl}
-          onChange={(e) => setVideoUrl(e.target.value)}
-          className="w-full p-3 rounded-xl bg-zinc-900"
-        />
+      <h1>History Generate</h1>
 
-        <textarea
-          placeholder="Prompt"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          className="w-full p-3 rounded-xl bg-zinc-900 h-32"
-        />
-
-        <div>
-          <p className="mb-2">CFG Scale: {cfgScale}</p>
-
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={cfgScale}
-            onChange={(e) => setCfgScale(Number(e.target.value))}
-            className="w-full"
-          />
-        </div>
-
-        <button
-          onClick={generateVideo}
-          disabled={loading}
-          className="w-full p-4 rounded-xl bg-yellow-400 text-black font-bold"
+      {history.map((item, index) => (
+        <div
+          key={index}
+          style={{
+            marginBottom: 30
+          }}
         >
-          {loading ? 'Generating...' : 'Generate Video'}
-        </button>
+          <video
+            src={item.video}
+            controls
+            width="100%"
+          />
 
-        {resultVideo && (
-          <div className="space-y-3">
-            <video
-              src={resultVideo}
-              controls
-              className="w-full rounded-2xl"
-            />
-
-            <a
-              href={resultVideo}
-              target="_blank"
-              className="block text-center bg-zinc-800 p-3 rounded-xl"
-            >
-              Download Video
-            </a>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          <h2 className="text-2xl font-bold text-yellow-400">
-            History Generate
-          </h2>
-
-          {history.map((item, index) => (
-            <div
-              key={index}
-              className="bg-zinc-900 p-4 rounded-2xl space-y-2"
-            >
-              <p className="text-sm text-zinc-400">
-                {item.createdAt}
-              </p>
-
-              <p>{item.prompt}</p>
-
-              <video
-                src={item.resultVideo}
-                controls
-                className="w-full rounded-xl"
-              />
-            </div>
-          ))}
+          <p>{item.prompt}</p>
         </div>
-      </div>
-    </main>
+      ))}
+    </div>
   )
-}
+      }
