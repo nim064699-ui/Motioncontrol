@@ -7,6 +7,7 @@ export async function POST(req) {
     const formData = new FormData()
 
     formData.append('reqtype', 'fileupload')
+
     formData.append('fileToUpload', file)
 
     const res = await fetch(
